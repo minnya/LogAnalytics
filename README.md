@@ -31,10 +31,21 @@ Graylogのコンテナは以下の環境変数を使用します。
 - `12201:12201/udp` - Syslog UDP入力用ポート
 
 ## セットアップ手順
-1. `docker-compose up -d` を実行し、すべてのサービスを起動します。
-2. ブラウザで [http://127.0.0.1:9000](http://127.0.0.1:9000) にアクセスします。
-3. 管理者アカウントでログイン（デフォルトは `admin` / 設定した `GRAYLOG_ROOT_PASSWORD_SHA2`）
-4. 必要に応じてGraylogの設定をカスタマイズします。
+1. `.env` ファイルを作成し、必要な環境変数（`GRAYLOG_PASSWORD_SECRET` と `GRAYLOG_ROOT_PASSWORD_SHA2`）を設定します。
+    - `GRAYLOG_PASSWORD_SECRET` を生成するには、次のコマンドを実行してください：
+      ```bash
+      pwgen -N 1 -s 96
+      ```
+      出力された文字列を `.env` ファイルにメモします。
+    - `GRAYLOG_ROOT_PASSWORD_SHA2` を生成するには、次のコマンドを実行してください：
+      ```bash
+      echo -n <yourPassword> | shasum -a 256
+      ```
+      `<yourPassword>` を自分の管理者パスワードに置き換え、出力されたSHA-256ハッシュを `.env` ファイルにメモします。
+2. `docker-compose up -d` を実行し、すべてのサービスを起動します。
+3. ブラウザで [http://127.0.0.1:9000](http://127.0.0.1:9000) にアクセスします。
+4. 管理者アカウントでログイン（デフォルトは `admin` / 設定した `GRAYLOG_ROOT_PASSWORD_SHA2`）
+5. 必要に応じてGraylogの設定をカスタマイズします。
 
 ## ファイル構成
 ```
