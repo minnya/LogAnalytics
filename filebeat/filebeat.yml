@@ -1,0 +1,54 @@
+filebeat.inputs:
+  - type: log
+    paths:
+      - /var/log/cloudflared.log # 収集するログファイルのパス
+    fields:
+      source: "ubuntu"
+
+output:
+  logstash:
+    hosts: ["graylog:5044"]
+
+processors:
+  - decode_json_fields:
+      fields: ["message"]
+      target: "request"
+  - timestamp:
+      field: "request.time"
+      layouts:
+        - "2006-01-02T15:04:05Z"
+  - script:
+      lang: javascript
+      source: >
+        function process(event) {
+            var request = event.Get("request");
+            if(request != null){
+                // メソッド部分 (GET, POST など) を抽出
+                var method = request.message.split(" ")[0];
+                event.Put("method", method); // 抜き出したメソッドを格納
+            }
+            return event;
+        }
+  - script:
+      lang: javascript
+      source: >
+        function process(event) {
+            var request = event.Get("request");
+            if(request != null){
+              var accessToken = request.headers.Authorization[0].split(" ")[1];
+              var jwt_meta = accessToken.split(".")[1]
+              event.Put("jwt_meta", jwt_meta);
+            }
+            return event;
+        }
+  - decode_base64_field:
+      field:
+        from: "jwt_meta"
+        to: "user_info_json"
+      ignore_missing: true
+      fail_on_error: true
+  - decode_json_fields:
+      fields: ["user_info_json"]
+      target: "user_info"
+  - drop_fields:
+      fields: ["message", "jwt_meta", "user_info_json"]

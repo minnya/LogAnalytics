@@ -1,0 +1,59 @@
+services:
+  mongo:
+    image: mongo:4.4.18
+    networks:
+      - graylog
+    volumes:
+      - mongo_data:/data/db
+    restart: always
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    environment:
+      - discovery.type=single-node
+    networks:
+      - graylog
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    restart: always
+
+  graylog:
+    image: graylog/graylog:4.1
+    environment:
+      - GRAYLOG_PASSWORD_SECRET=somepasswordpepper
+      - GRAYLOG_ROOT_PASSWORD_SHA2=c2584ec0e519d8624988e09d8ee5e0cb7a6b940cfa1a8c917f8b4ac0a79b5e36
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://127.0.0.1:9000/
+    entrypoint: /usr/bin/tini -- wait-for-it elasticsearch:9200 -- /docker-entrypoint.sh
+    networks:
+      - graylog
+    volumes:
+      - graylog_data:/usr/share/graylog/data
+    restart: always
+    depends_on:
+      - mongo
+      - elasticsearch
+    ports:
+      - "9000:9000"
+      - "5044:5044"
+      - "12201:12201/udp" # Syslog UDP input
+
+  filebeat:
+    build:
+      context: ./filebeat
+      dockerfile: Dockerfile
+    user: root
+    volumes:
+      - /var/log/cloudflared.log:/var/log/cloudflared.log:ro
+    networks:
+      - graylog
+    restart: always
+    depends_on:
+      - graylog
+
+networks:
+  graylog:
+
+volumes:
+  mongo_data:
+  es_data:
+  graylog_data:
